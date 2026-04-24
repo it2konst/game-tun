@@ -30,7 +30,7 @@ GameTunnel is built for scenarios where **low latency and stability** matter:
 Supported OS: Ubuntu 22.04+, Debian 12+
 
 ```bash
-curl -LO https://github.com/it2konst/gametunnel-core/releases/latest/download/xray-gametunnel-linux-amd64.tar.gz
+curl -LO https://github.com/it2konst/game-tun/releases/latest/download/xray-gametunnel-linux-amd64.tar.gz
 tar xzf xray-gametunnel-linux-amd64.tar.gz
 chmod +x xray-gametunnel
 sudo cp xray-gametunnel /usr/local/bin/
@@ -248,8 +248,8 @@ GameTunnel is optimized for **interactive and streaming traffic** - gaming, vide
 ## Building from Source
 
 ```bash
-git clone https://github.com/it2konst/gametunnel-core.git
-cd gametunnel-core
+git clone https://github.com/it2konst/game-tun.git
+cd game-tun
 CGO_ENABLED=0 go build -o xray-gametunnel -trimpath -ldflags="-s -w" -v ./main
 ./xray-gametunnel version
 ```

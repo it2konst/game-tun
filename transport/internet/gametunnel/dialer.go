@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/xtls/xray-core/common/dice"
 	xnet "github.com/xtls/xray-core/common/net"
 	"github.com/xtls/xray-core/common/signal/done"
 	"github.com/xtls/xray-core/transport/internet"
@@ -101,10 +102,37 @@ func Dial(ctx context.Context, dest xnet.Destination, streamSettings *internet.M
 		return nil, fmt.Errorf("invalid GameTunnel config: %w", err)
 	}
 
-	// Получаем адрес сервера
-	serverAddr := &net.UDPAddr{
-		IP:   dest.Address.IP(),
-		Port: int(dest.Port),
+	// Получаем адрес сервера.
+	// Для доменов сначала пробуем внутренний DNS Xray, затем fallback на системный резолвер.
+	var serverAddr *net.UDPAddr
+	if dest.Address.Family().IsDomain() {
+		domain := dest.Address.Domain()
+		strategy := internet.DomainStrategy_USE_IP
+		if streamSettings != nil && streamSettings.SocketSettings != nil &&
+			streamSettings.SocketSettings.DomainStrategy.HasStrategy() {
+			strategy = streamSettings.SocketSettings.DomainStrategy
+		}
+
+		ips, dnsErr := internet.LookupForIP(domain, strategy, nil)
+		if dnsErr == nil && len(ips) > 0 {
+			serverAddr = &net.UDPAddr{
+				IP:   ips[dice.Roll(len(ips))],
+				Port: int(dest.Port),
+			}
+		} else if strategy.ForceIP() {
+			return nil, fmt.Errorf("resolve domain %s via xray dns: %w", domain, dnsErr)
+		} else {
+			var err error
+			serverAddr, err = net.ResolveUDPAddr("udp", dest.NetAddr())
+			if err != nil {
+				return nil, fmt.Errorf("resolve UDP address %s: %w", dest.NetAddr(), err)
+			}
+		}
+	} else {
+		serverAddr = &net.UDPAddr{
+			IP:   dest.Address.IP(),
+			Port: int(dest.Port),
+		}
 	}
 
 	// Создаём UDP-сокет
