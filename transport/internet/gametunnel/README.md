@@ -29,7 +29,7 @@ GameTunnel is built for scenarios where **low latency and stability** matter:
 
 To avoid manual JSON editing, use the built-in configurator:
 
-- [tools/gametunnel-configurator.html](https://htmlpreview.github.io/?./tools/gametunnel-configurator.html)
+- [tools/gametunnel-configurator.html](https://htmlpreview.github.io/?https://github.com/it2konst/game-tun/blob/main/transport/internet/gametunnel/tools/gametunnel-configurator.html)
 - Open it directly in your browser (double-click the file)
 - Fill values once, then generate both `server.json` and `client.json`
 - Built-in presets: `Gaming`, `Streaming`, `Safe`
