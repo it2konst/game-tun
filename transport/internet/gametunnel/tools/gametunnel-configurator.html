@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GameTunnel Configurator</title>
+  <style>
+    :root {
+      --bg: #0f1720;
+      --panel: #162231;
+      --panel-soft: #1c2e42;
+      --text: #e7f0fb;
+      --muted: #9eb4cc;
+      --accent: #1fb6a7;
+      --accent-2: #3d82f6;
+      --danger: #e35d6a;
+      --border: #2b4058;
+      --ok: #36b37e;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Avenir Next", "Trebuchet MS", "Noto Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1000px 600px at 90% -10%, #234765 0%, rgba(35,71,101,0) 60%),
+        radial-gradient(900px 500px at -10% 0%, #1a5b56 0%, rgba(26,91,86,0) 65%),
+        linear-gradient(140deg, #0f1720 0%, #111c2a 45%, #0f1824 100%);
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .wrap {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: grid;
+      gap: 16px;
+    }
+
+    .hero, .card {
+      background: linear-gradient(160deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      backdrop-filter: blur(2px);
+    }
+
+    .hero {
+      padding: 18px;
+      display: grid;
+      gap: 8px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.4rem, 2.3vw, 2rem);
+      letter-spacing: 0.02em;
+    }
+
+    .sub {
+      color: var(--muted);
+      margin: 0;
+      line-height: 1.45;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1.1fr 1fr;
+    }
+
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    .card { padding: 16px; }
+
+    .section-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin: 0 0 12px;
+    }
+
+    .fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    @media (max-width: 700px) {
+      .fields { grid-template-columns: 1fr; }
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      font-size: 0.87rem;
+      color: var(--muted);
+    }
+
+    input, select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel-soft);
+      color: var(--text);
+      padding: 10px 12px;
+      font: inherit;
+      outline: none;
+    }
+
+    input[type="checkbox"] {
+      width: auto;
+      transform: scale(1.1);
+      margin-right: 8px;
+    }
+
+    .check {
+      display: flex;
+      align-items: center;
+      color: var(--text);
+      font-size: 0.92rem;
+      height: 42px;
+      padding: 0 2px;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--accent-2);
+      box-shadow: 0 0 0 3px rgba(61, 130, 246, 0.22);
+    }
+
+    .actions {
+      margin-top: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      font: inherit;
+      font-weight: 700;
+      padding: 10px 14px;
+      cursor: pointer;
+      color: #03131a;
+      background: linear-gradient(90deg, var(--accent), #46d6b5);
+      transition: transform 0.15s ease, filter 0.15s ease;
+    }
+
+    button.secondary {
+      color: var(--text);
+      background: linear-gradient(90deg, #304b66, #395a7b);
+      border: 1px solid var(--border);
+    }
+
+    button:hover { transform: translateY(-1px); filter: brightness(1.04); }
+
+    .outputs {
+      display: grid;
+      gap: 12px;
+    }
+
+    .output-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .output-head h3 {
+      margin: 0;
+      font-size: 0.95rem;
+    }
+
+    pre {
+      margin: 0;
+      background: #0d1824;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      overflow: auto;
+      max-height: 360px;
+      font-family: "JetBrains Mono", "Consolas", monospace;
+      font-size: 0.84rem;
+      line-height: 1.42;
+    }
+
+    .note {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    .status {
+      min-height: 1.2em;
+      color: var(--ok);
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .status.err { color: var(--danger); }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <h1>GameTunnel Configurator</h1>
+      <p class="sub">Single-file generator for server and client Xray configs. Fill shared values once, click <strong>Generate</strong>, then copy or download JSON files.</p>
+      <div id="status" class="status"></div>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h2 class="section-title">Input</h2>
+        <div class="fields">
+          <label>Server Address (IP or domain)
+            <input id="serverAddress" type="text" value="example.com" />
+          </label>
+          <label>Server Port
+            <input id="serverPort" type="number" min="1" max="65535" value="443" />
+          </label>
+          <label>UUID
+            <input id="uuid" type="text" value="00000000-0000-0000-0000-000000000000" />
+          </label>
+          <label>Shared Key
+            <input id="psk" type="text" value="CHANGE_ME_SECRET" />
+          </label>
+          <label>SOCKS Inbound Port (client)
+            <input id="socksPort" type="number" min="1" max="65535" value="10808" />
+          </label>
+          <label>Log Level
+            <select id="loglevel">
+              <option value="none">none</option>
+              <option value="warning" selected>warning</option>
+              <option value="info">info</option>
+              <option value="debug">debug</option>
+            </select>
+          </label>
+          <label>Obfuscation
+            <select id="obf">
+              <option value="quic" selected>quic</option>
+              <option value="webrtc">webrtc</option>
+              <option value="raw">raw</option>
+            </select>
+          </label>
+          <label>Priority
+            <select id="priority">
+              <option value="gaming" selected>gaming</option>
+              <option value="streaming">streaming</option>
+              <option value="none">none</option>
+            </select>
+          </label>
+          <label>MTU
+            <input id="mtu" type="number" min="1200" max="1600" value="1400" />
+          </label>
+          <label>KeepAlive (sec)
+            <input id="keepAlive" type="number" min="1" max="120" value="15" />
+          </label>
+          <label>Preset
+            <select id="preset">
+              <option value="gaming" selected>Gaming</option>
+              <option value="streaming">Streaming</option>
+              <option value="safe">Safe</option>
+            </select>
+          </label>
+          <label>Profile Mode
+            <input id="profileMode" type="text" value="IP profile" readonly />
+          </label>
+          <label class="check">
+            <input id="enablePadding" type="checkbox" checked />
+            Enable Padding
+          </label>
+        </div>
+
+        <div class="actions">
+          <button id="generateBtn" type="button">Generate</button>
+          <button id="applyPresetBtn" class="secondary" type="button">Apply Preset</button>
+          <button id="swapProfileBtn" class="secondary" type="button">Swap IP/Domain Profile</button>
+          <button id="copyServerBtn" class="secondary" type="button">Copy Server JSON</button>
+          <button id="copyClientBtn" class="secondary" type="button">Copy Client JSON</button>
+          <button id="downloadServerBtn" class="secondary" type="button">Download server.json</button>
+          <button id="downloadClientBtn" class="secondary" type="button">Download client.json</button>
+        </div>
+        <p class="note">Tip: for domain address in some clients, add route exception for your server domain to avoid proxy loop.</p>
+      </article>
+
+      <article class="card outputs">
+        <section>
+          <div class="output-head">
+            <h3>Server Config</h3>
+          </div>
+          <pre id="serverOut"></pre>
+        </section>
+
+        <section>
+          <div class="output-head">
+            <h3>Client Config</h3>
+          </div>
+          <pre id="clientOut"></pre>
+        </section>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const el = {
+      serverAddress: document.getElementById("serverAddress"),
+      serverPort: document.getElementById("serverPort"),
+      uuid: document.getElementById("uuid"),
+      psk: document.getElementById("psk"),
+      socksPort: document.getElementById("socksPort"),
+      loglevel: document.getElementById("loglevel"),
+      obf: document.getElementById("obf"),
+      priority: document.getElementById("priority"),
+      mtu: document.getElementById("mtu"),
+      keepAlive: document.getElementById("keepAlive"),
+      preset: document.getElementById("preset"),
+      profileMode: document.getElementById("profileMode"),
+      enablePadding: document.getElementById("enablePadding"),
+      serverOut: document.getElementById("serverOut"),
+      clientOut: document.getElementById("clientOut"),
+      status: document.getElementById("status"),
+      generateBtn: document.getElementById("generateBtn"),
+      applyPresetBtn: document.getElementById("applyPresetBtn"),
+      swapProfileBtn: document.getElementById("swapProfileBtn"),
+      copyServerBtn: document.getElementById("copyServerBtn"),
+      copyClientBtn: document.getElementById("copyClientBtn"),
+      downloadServerBtn: document.getElementById("downloadServerBtn"),
+      downloadClientBtn: document.getElementById("downloadClientBtn")
+    };
+
+    const presets = {
+      gaming: { obf: "quic", priority: "gaming", mtu: 1400, keepAlive: 15, enablePadding: true },
+      streaming: { obf: "quic", priority: "streaming", mtu: 1450, keepAlive: 20, enablePadding: true },
+      safe: { obf: "raw", priority: "none", mtu: 1300, keepAlive: 25, enablePadding: false }
+    };
+
+    let serverJson = "";
+    let clientJson = "";
+    let profileMode = "ip";
+
+    function setStatus(message, isError) {
+      el.status.textContent = message;
+      el.status.className = isError ? "status err" : "status";
+    }
+
+    function intVal(node, fallback) {
+      const n = Number.parseInt(node.value, 10);
+      return Number.isFinite(n) ? n : fallback;
+    }
+
+    function isLikelyIP(host) {
+      const v4 = /^\\d{1,3}(?:\\.\\d{1,3}){3}$/.test(host);
+      const v6 = /^[0-9a-fA-F:]+$/.test(host) && host.includes(":");
+      return v4 || v6;
+    }
+
+    function updateProfileLabel() {
+      el.profileMode.value = profileMode === "domain" ? "Domain profile" : "IP profile";
+    }
+
+    function applyPreset(name) {
+      const p = presets[name];
+      if (!p) return;
+      el.obf.value = p.obf;
+      el.priority.value = p.priority;
+      el.mtu.value = String(p.mtu);
+      el.keepAlive.value = String(p.keepAlive);
+      el.enablePadding.checked = p.enablePadding;
+      setStatus("Preset applied: " + name + ".", false);
+    }
+
+    function buildConfigs() {
+      const address = el.serverAddress.value.trim();
+      const uuid = el.uuid.value.trim();
+      const key = el.psk.value.trim();
+      const serverPort = intVal(el.serverPort, 443);
+      const socksPort = intVal(el.socksPort, 10808);
+      const mtu = intVal(el.mtu, 1400);
+      const keepAlive = intVal(el.keepAlive, 15);
+      const useDomainProfile = profileMode === "domain";
+      const addressIsIP = isLikelyIP(address);
+
+      if (!address) throw new Error("Server Address is required.");
+      if (!uuid) throw new Error("UUID is required.");
+      if (!key) throw new Error("Shared Key is required.");
+      if (serverPort < 1 || serverPort > 65535) throw new Error("Server Port must be 1..65535.");
+      if (socksPort < 1 || socksPort > 65535) throw new Error("SOCKS Port must be 1..65535.");
+
+      const gtSettings = {
+        obfuscation: el.obf.value,
+        priority: el.priority.value,
+        mtu,
+        enablePadding: el.enablePadding.checked,
+        keepAliveInterval: keepAlive,
+        key
+      };
+
+      const serverConfig = {
+        log: { loglevel: el.loglevel.value },
+        inbounds: [
+          {
+            port: serverPort,
+            protocol: "vless",
+            settings: {
+              clients: [{ id: uuid, flow: "" }],
+              decryption: "none"
+            },
+            streamSettings: {
+              network: "gametunnel",
+              gametunnelSettings: gtSettings
+            }
+          }
+        ],
+        outbounds: [{ protocol: "freedom", tag: "direct" }]
+      };
+
+      const clientOutbounds = [
+        {
+          tag: "proxy",
+          protocol: "vless",
+          settings: {
+            vnext: [
+              {
+                address,
+                port: serverPort,
+                users: [{ id: uuid, encryption: "none" }]
+              }
+            ]
+          },
+          streamSettings: {
+            network: "gametunnel",
+            gametunnelSettings: gtSettings
+          }
+        }
+      ];
+
+      if (useDomainProfile) {
+        clientOutbounds.push({ tag: "direct", protocol: "freedom" });
+      }
+
+      const clientConfig = {
+        log: { loglevel: el.loglevel.value },
+        inbounds: [
+          {
+            port: socksPort,
+            protocol: "socks",
+            settings: { auth: "noauth", udp: true }
+          }
+        ],
+        outbounds: clientOutbounds
+      };
+
+      if (useDomainProfile) {
+        clientConfig.dns = {
+          servers: ["localhost", "1.1.1.1"],
+          queryStrategy: "UseIPv4"
+        };
+        clientConfig.outbounds[0].streamSettings.sockopt = { domainStrategy: "UseIPv4" };
+        if (!addressIsIP) {
+          clientConfig.routing = {
+            rules: [
+              {
+                type: "field",
+                domain: ["domain:" + address],
+                outboundTag: "direct"
+              }
+            ]
+          };
+        }
+      }
+
+      serverJson = JSON.stringify(serverConfig, null, 2);
+      clientJson = JSON.stringify(clientConfig, null, 2);
+      el.serverOut.textContent = serverJson;
+      el.clientOut.textContent = clientJson;
+      setStatus("Configs generated.", false);
+    }
+
+    async function copyText(text, label) {
+      if (!text) {
+        setStatus("Generate config first.", true);
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        setStatus(label + " copied.", false);
+      } catch (_) {
+        setStatus("Clipboard access denied by browser.", true);
+      }
+    }
+
+    function downloadText(text, filename) {
+      if (!text) {
+        setStatus("Generate config first.", true);
+        return;
+      }
+      const blob = new Blob([text], { type: "application/json;charset=utf-8" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(link.href);
+      setStatus(filename + " downloaded.", false);
+    }
+
+    el.generateBtn.addEventListener("click", () => {
+      try {
+        buildConfigs();
+      } catch (err) {
+        setStatus(err.message || "Failed to generate config.", true);
+      }
+    });
+
+    el.applyPresetBtn.addEventListener("click", () => {
+      applyPreset(el.preset.value);
+      try {
+        buildConfigs();
+      } catch (_) {}
+    });
+
+    el.swapProfileBtn.addEventListener("click", () => {
+      profileMode = profileMode === "ip" ? "domain" : "ip";
+      updateProfileLabel();
+      setStatus("Switched to " + (profileMode === "domain" ? "Domain" : "IP") + " profile.", false);
+      try {
+        buildConfigs();
+      } catch (_) {}
+    });
+
+    el.copyServerBtn.addEventListener("click", () => copyText(serverJson, "Server JSON"));
+    el.copyClientBtn.addEventListener("click", () => copyText(clientJson, "Client JSON"));
+    el.downloadServerBtn.addEventListener("click", () => downloadText(serverJson, "server.json"));
+    el.downloadClientBtn.addEventListener("click", () => downloadText(clientJson, "client.json"));
+
+    applyPreset("gaming");
+    updateProfileLabel();
+    try { buildConfigs(); } catch (_) {}
+  </script>
+</body>
+</html>

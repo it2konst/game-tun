@@ -25,6 +25,17 @@ GameTunnel is built for scenarios where **low latency and stability** matter:
 
 ## Quick Start
 
+### Config Generator (Single HTML File)
+
+To avoid manual JSON editing, use the built-in configurator:
+
+- [tools/gametunnel-configurator.html](./tools/gametunnel-configurator.html)
+- Open it directly in your browser (double-click the file)
+- Fill values once, then generate both `server.json` and `client.json`
+- Built-in presets: `Gaming`, `Streaming`, `Safe`
+- `Swap IP/Domain Profile` button for quick client profile switching
+- Use `Copy` or `Download` buttons for quick setup
+
 ### Server Installation
 
 Supported OS: Ubuntu 22.04+, Debian 12+
