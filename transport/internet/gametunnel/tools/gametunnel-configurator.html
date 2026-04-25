@@ -118,7 +118,8 @@
 
     .check {
       display: flex;
-      align-items: center;
+      align-items: flex-end;
+      align-self: center;
       color: var(--text);
       font-size: 0.92rem;
       height: 42px;
@@ -135,6 +136,21 @@
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
+    }
+
+    .advanced {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--border);
+      display: grid;
+      gap: 10px;
+    }
+
+    .advanced-title {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--muted);
+      letter-spacing: 0.01em;
     }
 
     button {
@@ -189,7 +205,10 @@
     }
 
     .note {
-      margin: 6px 0 0;
+      /* margin: 6px 0 0; */
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--border);
       color: var(--muted);
       font-size: 0.84rem;
     }
@@ -259,20 +278,6 @@
           <label>KeepAlive (sec)
             <input id="keepAlive" type="number" min="1" max="120" value="15" />
           </label>
-          <label>Preset
-            <select id="preset">
-              <option value="gaming" selected>Gaming</option>
-              <option value="streaming">Streaming</option>
-              <option value="safe">Safe</option>
-            </select>
-          </label>
-          <label>Profile Mode
-            <input id="profileMode" type="text" value="IP profile" readonly />
-          </label>
-          <label class="check">
-            <input id="enablePadding" type="checkbox" checked />
-            Enable Padding
-          </label>
         </div>
 
         <div class="actions">
@@ -283,6 +288,28 @@
           <button id="copyClientBtn" class="secondary" type="button">Copy Client JSON</button>
           <button id="downloadServerBtn" class="secondary" type="button">Download server.json</button>
           <button id="downloadClientBtn" class="secondary" type="button">Download client.json</button>
+        </div>
+        <div class="advanced">
+          <p class="advanced-title">Advanced / Routing</p>
+          <div class="fields">
+            <label>Preset
+              <select id="preset">
+                <option value="gaming" selected>Gaming</option>
+                <option value="streaming">Streaming</option>
+                <option value="safe">Safe</option>
+              </select>
+            </label>
+            <label>Profile Mode
+              <input id="profileMode" type="text" value="IP profile" readonly />
+            </label>
+            <label>Next-hop VLESS URL (optional)
+              <input id="nextHopUrl" type="text" placeholder="vless://uuid@host:443?type=tcp&security=tls..." />
+            </label>            
+            <label class="check">
+              <input id="enablePadding" type="checkbox" checked />
+              Enable Padding
+            </label>
+          </div>
         </div>
         <p class="note">Tip: for domain address in some clients, add route exception for your server domain to avoid proxy loop.</p>
       </article>
@@ -317,6 +344,7 @@
       priority: document.getElementById("priority"),
       mtu: document.getElementById("mtu"),
       keepAlive: document.getElementById("keepAlive"),
+      nextHopUrl: document.getElementById("nextHopUrl"),
       preset: document.getElementById("preset"),
       profileMode: document.getElementById("profileMode"),
       enablePadding: document.getElementById("enablePadding"),
@@ -362,6 +390,74 @@
       el.profileMode.value = profileMode === "domain" ? "Domain profile" : "IP profile";
     }
 
+    function parseVlessUrl(raw) {
+      const url = new URL(raw);
+      if (url.protocol !== "vless:") {
+        throw new Error("Next-hop URL must start with vless://");
+      }
+      if (!url.username) {
+        throw new Error("Next-hop URL must contain UUID in userinfo.");
+      }
+      if (!url.hostname) {
+        throw new Error("Next-hop URL must contain host.");
+      }
+
+      const port = url.port ? Number.parseInt(url.port, 10) : 443;
+      if (!Number.isFinite(port) || port < 1 || port > 65535) {
+        throw new Error("Next-hop URL contains invalid port.");
+      }
+
+      const network = url.searchParams.get("type") || "tcp";
+      const security = url.searchParams.get("security") || "none";
+      const encryption = url.searchParams.get("encryption") || "none";
+      const flow = url.searchParams.get("flow") || "";
+      const fp = url.searchParams.get("fp") || "";
+      const alpnRaw = url.searchParams.get("alpn") || "";
+
+      const outbound = {
+        tag: "next-hop",
+        protocol: "vless",
+        settings: {
+          vnext: [
+            {
+              address: url.hostname,
+              port,
+              users: [
+                {
+                  id: decodeURIComponent(url.username),
+                  encryption
+                }
+              ]
+            }
+          ]
+        },
+        streamSettings: {
+          network
+        }
+      };
+
+      if (flow) {
+        outbound.settings.vnext[0].users[0].flow = flow;
+      }
+
+      if (security !== "none") {
+        outbound.streamSettings.security = security;
+      }
+
+      if (security === "tls") {
+        const tlsSettings = {
+          serverName: url.hostname
+        };
+        if (fp) tlsSettings.fingerprint = fp;
+        if (alpnRaw) {
+          tlsSettings.alpn = alpnRaw.split(",").map((s) => s.trim()).filter(Boolean);
+        }
+        outbound.streamSettings.tlsSettings = tlsSettings;
+      }
+
+      return outbound;
+    }
+
     function applyPreset(name) {
       const p = presets[name];
       if (!p) return;
@@ -381,6 +477,7 @@
       const socksPort = intVal(el.socksPort, 10808);
       const mtu = intVal(el.mtu, 1400);
       const keepAlive = intVal(el.keepAlive, 15);
+      const nextHopRaw = el.nextHopUrl.value.trim();
       const useDomainProfile = profileMode === "domain";
       const addressIsIP = isLikelyIP(address);
 
@@ -403,6 +500,7 @@
         log: { loglevel: el.loglevel.value },
         inbounds: [
           {
+            tag: "gt-in",
             port: serverPort,
             protocol: "vless",
             settings: {
@@ -417,6 +515,20 @@
         ],
         outbounds: [{ protocol: "freedom", tag: "direct" }]
       };
+
+      if (nextHopRaw) {
+        const nextHopOutbound = parseVlessUrl(nextHopRaw);
+        serverConfig.outbounds = [nextHopOutbound, { protocol: "freedom", tag: "direct" }];
+        serverConfig.routing = {
+          rules: [
+            {
+              type: "field",
+              inboundTag: ["gt-in"],
+              outboundTag: "next-hop"
+            }
+          ]
+        };
+      }
 
       const clientOutbounds = [
         {
